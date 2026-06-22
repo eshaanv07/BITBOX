@@ -3,16 +3,18 @@ import os
 import pygame
 
 from PyQt6.QtWidgets import (QApplication,QWidget,QVBoxLayout,QPushButton,QListWidget,QLabel,QFileDialog,QSlider,)
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt,QSettings
 
 
 class MusicPlayer(QWidget):
     def __init__(self):
         super().__init__()
         pygame.mixer.init()
-
-        self.current_folder=""
         
+        self.settings=QSettings("BITBOX","folder_mem")
+
+        self.current_folder=self.settings.value("last_folder","")
+
         self.paused=False
 
         self.setWindowTitle("BITBOX")
@@ -59,6 +61,10 @@ class MusicPlayer(QWidget):
         pygame.mixer.music.set_volume(0.5)
 
         self.setLayout(layout)
+        
+        if self.current_folder:
+            self.load_folder(self.current_folder)
+        
 
 
     def select_folder(self):
@@ -67,17 +73,24 @@ class MusicPlayer(QWidget):
         if not folder:
             return
 
-        self.current_folder = folder
+        self.current_folder=folder
+        self.settings.setValue("last_folder",folder)
 
+        self.load_folder(folder)
+        
+        
+    def load_folder(self,folder):
         self.song_list.clear()
 
         mp3_files=[file for file in os.listdir(folder)if file.lower().endswith(".mp3")]
+
         mp3_files.sort()
 
         for file in mp3_files:
             self.song_list.addItem(file)
 
         self.label.setText(folder)
+        
 
     def play_song(self):
         item=self.song_list.currentItem()
