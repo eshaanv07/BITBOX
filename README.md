@@ -1,4 +1,4 @@
---after downlaoding run these commands
+--after downloading run these commands
 
 curl -fsSL https://deno.land/install.sh | sh
 
