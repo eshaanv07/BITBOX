@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 from PyQt6.QtWidgets import QApplication,QWidget,QVBoxLayout,QPushButton
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEnginePage
-from PyQt6.QtCore import QUrl,QThread,pyqtSignal
+from PyQt6.QtCore import QUrl,QThread,pyqtSignal,QSettings
 
 import yt_dlp
 
@@ -20,9 +20,12 @@ class DownloadWorker(QThread):
     finished_ok=pyqtSignal(str)
     failed=pyqtSignal(str)
 
-    def __init__(self, url:str):
+    def __init__(self,url:str,output_dir:str):
         super().__init__()
         self.url=url
+        self.output_dir=output_dir
+ 
+
 
     def run(self):
         def hook(d):
@@ -33,7 +36,7 @@ class DownloadWorker(QThread):
                 self.progress.emit("Converting to mp3...")
 
         ydl_opts={
-            "format":"bestaudio/best","outtmpl":os.path.expanduser("~/Downloads/%(title)s.%(ext)s"),"postprocessors":[{"key":"FFmpegExtractAudio","preferredcodec": "mp3","preferredquality": "192",}],
+            "format":"bestaudio/best", "outtmpl":os.path.join(self.output_dir,"%(title)s.%(ext)s"),"postprocessors":[{"key":"FFmpegExtractAudio","preferredcodec": "mp3","preferredquality": "192",}],
             "cookiesfrombrowser":("firefox",),"remote_components":{"ejs:github"},"progress_hooks":[hook],"quiet":True,"no_warnings":True,
             }
 
@@ -53,6 +56,7 @@ class BrowserWindow(QWidget):
         self.resize(1200,850)
 
         self.worker=None
+        self.settings=QSettings("BITBOX","folder_mem")
 
         layout=QVBoxLayout()
 
@@ -86,11 +90,14 @@ class BrowserWindow(QWidget):
     def on_download_clicked(self):
         raw_url=self.browser.url().toString()
         clean_url=self.clean_yt_url(raw_url)
+        
+        selected_folder=self.settings.value("last_folder", "")
+        output_dir = selected_folder if selected_folder else os.path.expanduser("~/Downloads")
 
         self.download_btn.setEnabled(False)
         self.download_btn.setText("Downloading...")
 
-        self.worker=DownloadWorker(clean_url)
+        self.worker=DownloadWorker(clean_url,output_dir)
         self.worker.progress.connect(self.on_progress)
         self.worker.finished_ok.connect(self.on_finished)
         self.worker.failed.connect(self.on_failed)
